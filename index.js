@@ -11,12 +11,12 @@ const client = new Client({
 
 const db = new QuickDB();
 const PREFIX = "!";
-const OWNER_ID = "ضع_الأيدي_الخاص_بك_هنا"; // <--- ضع الأيدي الخاص بك هنا
+const OWNER_ID = "1025694968137912322"; // تم وضع الأيدي الخاص بك هنا
 const TARGET_ACCOUNT = "1025694968137912322"; 
 const PROBOT_ID = "282859044593598464";
 
 client.on('ready', () => {
-    console.log(`✅ البوت يعمل باسم: ${client.user.tag}`);
+    console.log(`✅ البوت جاهز ويعمل باسم: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -25,7 +25,7 @@ client.on('messageCreate', async (message) => {
     const args = message.content.slice(PREFIX.length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
-    // أمر الإضافة: !additem [الاسم] [السعر] [المحتوى]
+    // أمر الإضافة: !additem [الاسم] [السعر] [الرابط]
     if (command === 'additem') {
         if (message.author.id !== OWNER_ID) return message.reply("❌ أنت لست المالك!");
         
@@ -33,13 +33,13 @@ client.on('messageCreate', async (message) => {
         const price = args[1];
         const itemContent = args.slice(2).join(" ");
 
-        if (!name || !price || !itemContent) return message.reply("❌ الاستخدام: `!additem [الاسم] [السعر] [الرابط/المحتوى]`");
+        if (!name || !price || !itemContent) return message.reply("❌ الاستخدام الصحيح: `!additem [الاسم] [السعر] [الرابط]`");
 
         await db.set(`item_${name}`, { name, price, content: itemContent });
         message.reply(`✅ تم إضافة **${name}** للمتجر بنجاح.`);
     }
 
-    // أمر المتجر
+    // أمر المتجر: !shop
     if (command === 'shop') {
         const allItems = await db.all();
         const items = allItems.filter(i => i.id.startsWith("item_"));
@@ -62,7 +62,7 @@ client.on('messageCreate', async (message) => {
 
         const embed = new EmbedBuilder()
             .setTitle("💳 عملية شراء جديدة")
-            .setDescription(`لشراء **${item.name}**، قم بتحويل **${item.price}** كريدت للحساب:\n\`${TARGET_ACCOUNT}\`\n\nأمامك 3 دقائق.`);
+            .setDescription(`لشراء **${item.name}**، قم بتحويل **${item.price}** كريدت للحساب:\n\`${TARGET_ACCOUNT}\`\n\nأمامك 3 دقائق لإتمام التحويل.`);
         
         message.reply({ embeds: [embed] });
 
@@ -74,7 +74,7 @@ client.on('messageCreate', async (message) => {
             try {
                 await message.author.send(`📦 منتجك هو: ${item.content}`);
             } catch (e) {
-                message.channel.send("⚠️ الخاص عندك مغلق، افتحه لاستلام المنتج!");
+                message.channel.send("⚠️ الخاص عندك مغلق يا بطل، افتحه لاستلام المنتج!");
             }
         });
     }
