@@ -13,7 +13,7 @@ const client = new Client({
 const db = new QuickDB();
 const PREFIX = "!";
 const OWNER_ID = "1025694968137912322"; 
-const TARGET_ACCOUNT = "<@1025694968137912322>"; 
+const TARGET_ACCOUNT = "1025694968137912322"; 
 
 client.on('ready', () => {
     console.log(`✅ البوت يعمل بكامل طاقته: ${client.user.tag}`);
