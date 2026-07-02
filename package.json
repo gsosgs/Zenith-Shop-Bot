@@ -1,0 +1,9 @@
+{
+  "name": "zenith-shop-probot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "discord.js": "^14.15.0",
+    "quick.db": "^9.1.7"
+  }
+}
