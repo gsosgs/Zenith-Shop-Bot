@@ -5,18 +5,18 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds, 
         GatewayIntentBits.GuildMessages, 
-        GatewayIntentBits.MessageContent
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.DirectMessages
     ] 
 });
 
 const db = new QuickDB();
 const PREFIX = "!";
-const OWNER_ID = "1025694968137912322"; // تم وضع الأيدي الخاص بك هنا
-const TARGET_ACCOUNT = "1025694968137912322"; 
-const PROBOT_ID = "282859044593598464";
+const OWNER_ID = "1025694968137912322"; 
+const TARGET_ACCOUNT = "<@1025694968137912322>"; 
 
 client.on('ready', () => {
-    console.log(`✅ البوت جاهز ويعمل باسم: ${client.user.tag}`);
+    console.log(`✅ البوت يعمل بكامل طاقته: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -25,57 +25,48 @@ client.on('messageCreate', async (message) => {
     const args = message.content.slice(PREFIX.length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
-    // أمر الإضافة: !additem [الاسم] [السعر] [الرابط]
+    // أمر الإضافة
     if (command === 'additem') {
         if (message.author.id !== OWNER_ID) return message.reply("❌ أنت لست المالك!");
-        
         const name = args[0];
         const price = args[1];
-        const itemContent = args.slice(2).join(" ");
-
-        if (!name || !price || !itemContent) return message.reply("❌ الاستخدام الصحيح: `!additem [الاسم] [السعر] [الرابط]`");
-
-        await db.set(`item_${name}`, { name, price, content: itemContent });
-        message.reply(`✅ تم إضافة **${name}** للمتجر بنجاح.`);
+        const content = args.slice(2).join(" ");
+        if (!name || !price || !content) return message.reply("❌ استخدم: `!additem [الاسم] [السعر] [المحتوى]`");
+        await db.set(`item_${name}`, { name, price, content });
+        message.reply(`✅ تم إضافة **${name}** للمتجر.`);
     }
 
-    // أمر المتجر: !shop
+    // أمر المتجر
     if (command === 'shop') {
         const allItems = await db.all();
         const items = allItems.filter(i => i.id.startsWith("item_"));
-        
-        if (items.length === 0) return message.reply("🛒 المتجر فارغ حالياً.");
-
+        if (items.length === 0) return message.reply("🛒 المتجر فارغ.");
         const embed = new EmbedBuilder()
             .setTitle("🛒 متجر Zenith Shop")
             .setDescription(items.map(i => `**${i.value.name}** - السعر: ${i.value.price} كريدت`).join("\n"))
             .setColor(0x0099FF);
-
         message.channel.send({ embeds: [embed] });
     }
 
-    // أمر الشراء: !buy [اسم_المنتج]
+    // أمر الشراء - التوصيل التلقائي الخاص
     if (command === 'buy') {
         const itemName = args[0];
         const item = await db.get(`item_${itemName}`);
-        if (!item) return message.reply("❌ هذا المنتج غير موجود.");
+        if (!item) return message.reply("❌ المنتج غير موجود.");
 
-        const embed = new EmbedBuilder()
-            .setTitle("💳 عملية شراء جديدة")
-            .setDescription(`لشراء **${item.name}**، قم بتحويل **${item.price}** كريدت للحساب:\n\`${TARGET_ACCOUNT}\`\n\nأمامك 3 دقائق لإتمام التحويل.`);
+        const msg = await message.reply(`💳 لشراء **${item.name}**، قم بتحويل **${item.price}** كريدت لـ ${TARGET_ACCOUNT}\nثم أرسل كلمة **"تم"** هنا وسأرسل لك الطلب في الخاص فوراً.`);
         
-        message.reply({ embeds: [embed] });
-
-        const filter = m => m.author.id === PROBOT_ID && m.content.includes(TARGET_ACCOUNT) && m.content.includes(message.author.id) && m.content.includes(item.price);
-        const collector = message.channel.createMessageCollector({ filter, time: 180000, max: 1 });
+        const filter = m => m.author.id === message.author.id && m.content.toLowerCase() === "تم";
+        const collector = message.channel.createMessageCollector({ filter, time: 600000 }); 
 
         collector.on('collect', async (m) => {
-            message.channel.send(`✅ تم التأكد من التحويل! تم إرسال المنتج لـ ${message.author} في الخاص.`);
+            message.channel.send(`✅ تم التأكيد! جاري إرسال المنتج لـ ${message.author} في الخاص 📦.`);
             try {
-                await message.author.send(`📦 منتجك هو: ${item.content}`);
+                await message.author.send(`📦 طلبك لـ **${item.name}** هو:\n${item.content}`);
             } catch (e) {
-                message.channel.send("⚠️ الخاص عندك مغلق يا بطل، افتحه لاستلام المنتج!");
+                message.channel.send("⚠️ يا بطل، الخاص عندك مغلق! افتحه لأستطيع إرسال المنتج.");
             }
+            collector.stop();
         });
     }
 });
