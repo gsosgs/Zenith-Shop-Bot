@@ -2,57 +2,57 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const { QuickDB } = require("quick.db");
 
 const client = new Client({ 
-    intents: [
-        GatewayIntentBits.Guilds, 
-        GatewayIntentBits.GuildMessages, 
-        GatewayIntentBits.MessageContent
-    ] 
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers] 
 });
 
 const db = new QuickDB();
+const PROBOT_ID = "282859044593598464"; 
+const MY_ID = "1025694968137912322"; // أيدي حسابك لاستقبال الكريدت
 
 client.on('ready', () => {
-    console.log(`✅ البوت متصل ومستعد يا باطو!`);
+    console.log(`✅ البوت جاهز ومحمي يا باطو!`);
 });
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.content.startsWith("!")) return;
+    const args = message.content.slice(1).trim().split(/ +/);
+    const command = args.shift().toLowerCase();
 
-    const parts = message.content.split(" ");
-    const command = parts[0];
-
-    // أمر الإضافة: !additem اسم سعر رابط
-    if (command === '!additem') {
-        if (message.author.id !== "1025694968137912322") return;
-        
-        const name = parts[1];
-        const price = parts[2];
-        const link = parts[3];
-
-        if (!name || !price || !link) {
-            return message.reply("❌ اكتب الأمر هكذا: `!additem اسم سعر رابط`");
-        }
-
-        await db.set(`item_${name}`, { name, price, link });
-        return message.reply(`✅ تم حفظ المنتج: ${name} بالسعر ${price}`);
+    // أمر الإضافة
+    if (command === 'additem') {
+        if (message.author.id !== MY_ID) return;
+        await db.set(`item_${args[0]}`, { name: args[0], price: args[1], link: args.slice(2).join(" ") });
+        message.reply(`✅ تم حفظ ${args[0]}`);
     }
 
-    // أمر الشراء: !buy اسم
-    if (command === '!buy') {
-        const name = parts[1];
-        const item = await db.get(`item_${name}`);
-        if (!item) return message.reply("❌ المنتج غير موجود.");
-
-        await message.reply(`💳 حول ${item.price} كريدت ثم أرسل "تم" في الشات.`);
-
-        const filter = m => m.author.id === message.author.id && m.content === "تم";
+    // أمر الشراء
+    if (command === 'buy') {
+        const item = await db.get(`item_${args[0]}`);
+        if (!item) return message.reply("❌ غير موجود.");
+        
+        const buyMsg = await message.reply(`💳 حول ${item.price} لـ <@${MY_ID}> ثم اكتب "تم"`);
+        
+        const filter = m => m.author.id === message.author.id && m.content.toLowerCase() === "تم";
         const collector = message.channel.createMessageCollector({ filter, time: 600000 });
-
-        collector.on('collect', () => {
-            message.reply(`✅ تم التأكيد! تم إرسال الرابط لك في الخاص: ${item.link}`);
-            message.author.send(`📦 الرابط الخاص بك: ${item.link}`).catch(() => {
-                message.reply("⚠️ الخاص مغلق! افتحه لاستلام الرابط.");
-            });
+        
+        collector.on('collect', async () => {
+            const msgs = await message.channel.messages.fetch({ limit: 20 });
+            
+            // هنا الأمان: البوت يبحث عن رسالة من البروبوت تحتوي على رقم حسابك (أيدي)
+            const payment = msgs.find(m => 
+                m.author.id === PROBOT_ID && 
+                m.content.includes(MY_ID) && 
+                m.createdTimestamp > buyMsg.createdTimestamp
+            );
+            
+            if (!payment) {
+                return message.reply("❌ لم أجد تحويلاً مؤكداً لك! تأكد من التحويل.");
+            }
+            
+            try {
+                await message.author.send(`📦 طلبك: ${item.link}`);
+                message.reply("✅ تم التسليم في الخاص.");
+            } catch { message.reply("⚠️ الخاص مغلق!"); }
             collector.stop();
         });
     }
